@@ -27,4 +27,29 @@ describe('cart utilities', () => {
     expect(calculateCartItemCount([{ quantity: 2 }, { quantity: 3 }])).toBe(5);
     expect(calculateCartItemCount([])).toBe(0);
   });
+
+  it('increases only the chosen item by one', () => {
+    const cart = [
+      { productId: 1, quantity: 1, stock: 3 },
+      { productId: 2, quantity: 2, stock: 3 }
+    ];
+    const result = updateCartQuantity(cart, 1, 2);
+    expect(result.cart.map((item) => item.quantity)).toEqual([2, 2]);
+  });
+
+  it('decreases an item by one', () => {
+    const cart = [{ productId: 1, quantity: 2, stock: 3 }];
+    expect(updateCartQuantity(cart, 1, 1).cart[0].quantity).toBe(1);
+  });
+
+  it('does not allow quantity below one', () => {
+    const cart = [{ productId: 1, quantity: 1, stock: 3 }];
+    expect(updateCartQuantity(cart, 1, 0).error).toContain('greater than zero');
+  });
+
+  it('allows the stock limit but not one beyond it', () => {
+    const cart = [{ productId: 1, quantity: 1, stock: 2 }];
+    expect(updateCartQuantity(cart, 1, 2).error).toBe('');
+    expect(updateCartQuantity(cart, 1, 3).error).toContain('Only 2');
+  });
 });

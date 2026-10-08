@@ -8,6 +8,7 @@ export default function ProductsPage() {
   const [products, setProducts] = useState([]);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
+  const [sort, setSort] = useState('default');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const { addToCart, cartMessage } = useCart();
@@ -26,14 +27,24 @@ export default function ProductsPage() {
     [products]
   );
 
-  const visibleProducts = products.filter((product) => {
+  const visibleProducts = useMemo(() => {
     const query = search.trim().toLowerCase();
+    const filteredProducts = products.filter((product) => {
       const matchesSearch =
         product.name.toLowerCase().includes(query) ||
         product.description.toLowerCase().includes(query);
-    const matchesCategory = category === 'All' || product.category === category;
-    return matchesSearch && matchesCategory;
-  });
+      const matchesCategory = category === 'All' || product.category === category;
+      return matchesSearch && matchesCategory;
+    });
+
+    if (sort === 'default') return filteredProducts;
+
+    return [...filteredProducts].sort((first, second) => {
+      if (sort === 'price-low') return Number(first.price) - Number(second.price);
+      if (sort === 'price-high') return Number(second.price) - Number(first.price);
+      return first.name.localeCompare(second.name);
+    });
+  }, [category, products, search, sort]);
 
   return (
     <section>
@@ -54,6 +65,15 @@ export default function ProductsPage() {
           <span>Category</span>
           <select value={category} onChange={(event) => setCategory(event.target.value)}>
             {categories.map((item) => <option key={item}>{item}</option>)}
+          </select>
+        </label>
+        <label>
+          <span>Sort</span>
+          <select value={sort} onChange={(event) => setSort(event.target.value)}>
+            <option value="default">Default</option>
+            <option value="price-low">Price: Low to High</option>
+            <option value="price-high">Price: High to Low</option>
+            <option value="name-az">Name: A to Z</option>
           </select>
         </label>
       </div>
