@@ -6,6 +6,7 @@ import { api } from '../services/api.js';
 
 export default function ProductsPage() {
   const [products, setProducts] = useState([]);
+  const [allProducts, setAllProducts] = useState([]);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
   const [sort, setSort] = useState('default');
@@ -14,37 +15,53 @@ export default function ProductsPage() {
   const { addToCart, cartMessage } = useCart();
 
   useEffect(() => {
-    let active = true;
     api.getProducts()
-      .then((data) => active && setProducts(data.products))
-      .catch((caught) => active && setError(caught.message))
-      .finally(() => active && setLoading(false));
-    return () => { active = false; };
+      .then((data) => setAllProducts(data.products))
+      .catch((caught) => setError(caught.message))
+      .finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    let ignore = false;
+
+    setLoading(true);
+    setError('');
+
+    api.getProducts(search)
+      .then((data) => {
+        if (!ignore) setProducts(data.products);
+      })
+      .catch((caught) => {
+        if (!ignore) setError(caught.message);
+      })
+      .finally(() => {
+        if (!ignore) setLoading(false);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [search]);
+
   const categories = useMemo(
-    () => ['All', ...new Set(products.map((product) => product.category))],
-    [products]
+    () => ['All', ...new Set(allProducts.map((p) => p.category))], [allProducts]
   );
 
   const visibleProducts = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    const filteredProducts = products.filter((product) => {
-      const matchesSearch =
-        product.name.toLowerCase().includes(query) ||
-        product.description.toLowerCase().includes(query);
-      const matchesCategory = category === 'All' || product.category === category;
-      return matchesSearch && matchesCategory;
-    });
+    const filteredProducts = category === 'All' ? products : products.filter((product) => product.category === category);
 
-    if (sort === 'default') return filteredProducts;
+    if (sort === 'default')
+      return filteredProducts;
 
     return [...filteredProducts].sort((first, second) => {
-      if (sort === 'price-low') return Number(first.price) - Number(second.price);
-      if (sort === 'price-high') return Number(second.price) - Number(first.price);
+      if (sort === 'price-low')
+        return Number(first.price) - Number(second.price);
+      if (sort === 'price-high')
+        return Number(second.price) - Number(first.price);
+      
       return first.name.localeCompare(second.name);
     });
-  }, [category, products, search, sort]);
+  }, [category, products, sort]);
 
   return (
     <section>
