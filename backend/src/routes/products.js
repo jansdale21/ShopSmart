@@ -17,8 +17,16 @@ router.get('/', async (request, response, next) => {
       },
       orderBy: { id: 'asc' }
     });
-    response.json({ products: products.map((p) => ({ ...p, price: Number(p.price) })) });
-  } catch (error) { next(error); }
+    
+    response.json({ 
+      products: products.map((p) => ({ 
+        ...p, 
+        price: Number(p.price) 
+      })) 
+    });
+  } 
+    catch (error) { next(error); 
+  }
 });
 
 router.get('/:id', async (request, response, next) => {
