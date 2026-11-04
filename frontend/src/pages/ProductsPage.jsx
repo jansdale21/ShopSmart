@@ -13,6 +13,7 @@ export default function ProductsPage() {
   const [sort, setSort] = useState('default');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [categoryError, setCategoryError] = useState('');
 
   const { addToCart, cartMessage } = useCart();
 
@@ -28,7 +29,7 @@ export default function ProductsPage() {
       })
       .catch((caught) => {
         if (active) {
-          console.error('Failed to load categories:', caught);
+          setCategoryError(caught.message);
         }
       });
 
@@ -52,6 +53,7 @@ export default function ProductsPage() {
       })
       .catch((caught) => {
         if (active) {
+          setProducts([]);
           setError(caught.message);
         }
       })
@@ -154,8 +156,16 @@ export default function ProductsPage() {
 
       <StatusMessage>{cartMessage}</StatusMessage>
 
+      {categoryError && (
+        <StatusMessage type="error">
+          Category options could not be loaded: {categoryError}
+        </StatusMessage>
+      )}
+
       {loading && (
-        <StatusMessage>Loading products…</StatusMessage>
+        <StatusMessage>
+          Loading products…
+        </StatusMessage>
       )}
 
       {error && (
@@ -166,19 +176,21 @@ export default function ProductsPage() {
 
       {!loading && !error && visibleProducts.length === 0 && (
         <StatusMessage>
-          No products match your filters.
+          No products match your search or filters.
         </StatusMessage>
       )}
 
-      <div className="product-grid">
-        {visibleProducts.map((product) => (
-          <ProductCard
-            key={product.id}
-            product={product}
-            onAddToCart={addToCart}
-          />
-        ))}
-      </div>
+      {!loading && !error && (
+        <div className="product-grid">
+          {visibleProducts.map((product) => (
+            <ProductCard
+              key={product.id}
+              product={product}
+              onAddToCart={addToCart}
+            />
+          ))}
+        </div>
+      )}
     </section>
   );
 }
