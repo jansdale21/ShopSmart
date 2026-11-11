@@ -3,12 +3,13 @@ import StatusMessage from '../components/StatusMessage.jsx';
 import { useCart } from '../context/CartContext.jsx';
 
 export default function CartPage() {
-  const { cart, total, itemCount, cartMessage, setQuantity, removeFromCart } = useCart();
+  const { cart, total, itemCount, cartMessage, cartMessageType, setQuantity, removeFromCart } = useCart();
 
   return (
     <section>
       <div className="page-heading"><p className="eyebrow">YOUR ORDER</p><h1>Shopping cart</h1></div>
-      <StatusMessage type={cartMessage.startsWith('Only') ? 'error' : 'info'}>{cartMessage}</StatusMessage>
+      {/* DEF-01: the cart context now reports whether the message is an error. */}
+      <StatusMessage type={cartMessageType}>{cartMessage}</StatusMessage>
       {cart.length === 0 ? (
         <div className="empty-state"><h2>Your cart is empty</h2><Link className="button" to="/">Browse products</Link></div>
       ) : (

@@ -15,7 +15,7 @@ export default function ProductsPage() {
   const [error, setError] = useState('');
   const [categoryError, setCategoryError] = useState('');
 
-  const { addToCart, cartMessage } = useCart();
+  const { addToCart, cartMessage, cartMessageType } = useCart();
 
   // Fetch the complete catalog for category options.
   useEffect(() => {
@@ -154,11 +154,12 @@ export default function ProductsPage() {
         </label>
       </div>
 
-      <StatusMessage>{cartMessage}</StatusMessage>
+      <StatusMessage type={cartMessageType}>{cartMessage}</StatusMessage>
 
-      {categoryError && (
+      {/* DEF-04: show one clear message instead of two raw "Failed to fetch" errors. */}
+      {categoryError && !error && (
         <StatusMessage type="error">
-          Category options could not be loaded: {categoryError}
+          Category options could not be loaded. {categoryError}
         </StatusMessage>
       )}
 
@@ -170,7 +171,7 @@ export default function ProductsPage() {
 
       {error && (
         <StatusMessage type="error">
-          {error} Make sure the backend is running.
+          {error}
         </StatusMessage>
       )}
 

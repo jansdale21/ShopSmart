@@ -10,6 +10,9 @@ import assistantRouter from './routes/assistant.js';
 export function createApp() {
   const app = express();
   app.disable('x-powered-by');
+  // Render (and most hosts) put a proxy in front of the API. Trust the first proxy so the
+  // assistant rate limiter sees each visitor's real IP instead of the proxy's.
+  app.set('trust proxy', 1);
   app.use(helmet());
   app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:5173' }));
   app.use(express.json({ limit: '100kb' }));
