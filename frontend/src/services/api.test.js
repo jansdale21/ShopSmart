@@ -49,4 +49,13 @@ describe('api request error handling', () => {
 
     await expect(request('/health')).resolves.toEqual({ status: 'ok' });
   });
+
+  it('sends the sign-in cookie with API requests', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ customer: { id: 1 } }) });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await request('/auth/me');
+
+    expect(fetchMock.mock.calls[0][1]).toMatchObject({ credentials: 'include' });
+  });
 });

@@ -21,15 +21,41 @@ model Product {
   orderItems  OrderItem[]
 }
 
+model Customer {
+  id           Int       @id @default(autoincrement())
+  name         String
+  email        String    @unique
+  passwordHash String
+  createdAt    DateTime  @default(now())
+  orders       Order[]
+  sessions     Session[]
+}
+
+model Session {
+  id         Int      @id @default(autoincrement())
+  tokenHash  String   @unique
+  customerId Int
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+}
+
 model Order {
   id           Int         @id @default(autoincrement())
+  // Orders placed before sign-in existed keep customerId = null. No customer can read them.
+  customerId   Int?
   customerName String
   email        String
   address      String
   status       String      @default("PENDING")
   total        Decimal     @db.Decimal(10, 2)
   createdAt    DateTime    @default(now())
+  customer     Customer?   @relation(fields: [customerId], references: [id])
   items        OrderItem[]
+
+  @@index([customerId])
 }
 
 model OrderItem {

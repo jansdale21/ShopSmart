@@ -25,6 +25,8 @@ export async function request(path, options = {}, timeoutMs = REQUEST_TIMEOUT_MS
     response = await fetch(`${API_URL}${path}`, {
       ...options,
       signal: controller.signal,
+      // Send the httpOnly sign-in cookie with every API request.
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json', ...options.headers }
     });
   } catch (caught) {
@@ -52,5 +54,11 @@ export const api = {
   createOrder: (order) => request('/orders', { method: 'POST', body: JSON.stringify(order) }),
   askAssistant: (question) => request('/assistant/questions', {
     method: 'POST', body: JSON.stringify({ question })
-  })
+  }),
+  register: (details) => request('/auth/register', { method: 'POST', body: JSON.stringify(details) }),
+  login: (details) => request('/auth/login', { method: 'POST', body: JSON.stringify(details) }),
+  logout: () => request('/auth/logout', { method: 'POST' }),
+  getCurrentCustomer: () => request('/auth/me'),
+  getMyOrders: () => request('/orders'),
+  getOrder: (id) => request(`/orders/${id}`)
 };
