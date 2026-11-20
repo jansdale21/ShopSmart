@@ -2,50 +2,76 @@
 
 ## Version and date
 
-- **Release candidate:** commit `6ef54b5` on `main` (github.com/jansdale21/ShopSmart), November 12, 2026
-- **Baseline before this work:** commit `d0e7474`
-- After `6ef54b5` only documentation (`docs/`, this file) and `backend/.env.example` changed. No application code changed.
+- **Release:** commit `47ba3cc` on `main` (github.com/jansdale21/ShopSmart), deployed November 20, 2026
+- **Previous release:** commit `6ef54b5` (local release candidate, November 12, 2026)
+- After `47ba3cc` only documentation (`docs/`, this file) changed. No application code changed.
 
 ## Deployment status
 
-**Local release candidate only.** Live staging was not completed for this submission. The deployment plan for Render is in [docs/activity-4-deployment-plan.md](docs/activity-4-deployment-plan.md).
+**Hosted on AWS (online release).**
 
-Local smoke test on November 12, 2026: **passed** (health, products, cart, checkout, assistant). Details are in [docs/activity-5-release-check.md](docs/activity-5-release-check.md).
+| Item | Value |
+|---|---|
+| Site URL | https://13-250-195-24.sslip.io |
+| API | https://13-250-195-24.sslip.io/api (same HTTPS origin; health: `/api/health`) |
+| AWS account plan | Free plan – US$120.00 credits (US$100 sign-up + US$20 budget bonus), US$0.00 used on Nov 20, 2026; the plan ends after 6 months (about May 21, 2027) or when credits run out |
+| Region | ap-southeast-1 (Asia Pacific – Singapore), AZ ap-southeast-1c |
+| AWS services | Amazon EC2 (t3.small instance `shopsmart-web`, 20 GiB gp3 EBS volume, Elastic IP 13.250.195.24, security group `shopsmart-web-sg`, key pair `shopsmart-key`), AWS Budgets |
+| Architecture | Single EC2 host: Caddy (HTTPS, React build, `/api` proxy) → Express API (systemd) → PostgreSQL 16 (localhost only). See [docs/aws-decision-record.md](docs/aws-decision-record.md) |
+| Tested URLs | `/`, `/cart` (direct refresh), `/checkout`, `/account`, `/assistant`, `/api/health`, `/api/products`, `/api/orders/1`, `/api/assistant/questions`, `http://13-250-195-24.sslip.io` (→ 308 to HTTPS) |
+| Hosted checks | 8 of 8 passed on November 20, 2026 – details in [docs/activity-6-aws-deployment.md](docs/activity-6-aws-deployment.md) |
+| Demo period / removal | Until the grade is released (latest December 15, 2026), then removed using [docs/aws-resource-register.md](docs/aws-resource-register.md) |
 
-## Working features (verified)
+## What is new in this release
 
-- Browse products, search, category filter, sort, and product details
-- Cart: add, change quantity, remove, and keep the cart after a page refresh
-- Simulated checkout: invalid details refused in the browser and in the API (422); valid details create exactly one order
-- Stock rule: the cart and the API both block quantities above stock (409), with no order created
-- Product assistant: answers from the current catalog with product links, says honestly when nothing matches, and refers warranty questions to staff
-- Live AI with Google Gemini, falling back to rule-based answers with a notice when Gemini cannot be reached
-- Clear message when the server cannot be reached, and a 15-second timeout
+- **Customer sign-in:** create account, sign in, sign out, "My orders". Passwords are stored as salted hashes; sessions use an `HttpOnly`, `Secure`, `SameSite=Lax` cookie.
+- **Order ownership enforced by the API:** checkout requires sign-in and saves the order under the signed-in customer. `GET /api/orders/:id` → guest **401**, owner **200**, other customer **403**.
+- **Committed migration** `20261120021500_customer_accounts` (Customer, Session, optional order owner). Old orders keep no owner and are visible to no one.
+- **Deployment on AWS** with HTTPS, a private database, an API that restarts after crashes and reboots, and server-only secrets.
+- **Fix:** the order success message no longer disappears when the cart is cleared after checkout.
 
-Test record: [docs/activity-2-test-record.md](docs/activity-2-test-record.md) (23 cases, 21 pass and 2 fail before fixes; both passed after fixes). Fixes: [docs/activity-3-defects.md](docs/activity-3-defects.md).
+## Improvements and retests
+
+The exam instructions for "two improvements and retests" were not provided to me. The improvement completed in this release is customer sign-in with server-side order ownership, retested:
+
+| Retest | Local result | Hosted result |
+|---|---|---|
+| Guest checkout is blocked, cart kept | Pass (`06`) | Pass (`24`) |
+| Signed-in customer places an order | Pass – order #13 (`07`, `08`) | Pass – order #1, ₱3,150.00 (`25`, `26`) |
+| Owner reads the order by direct API request | 200 (`09`) | 200 (`27`) |
+| Guest reads the order | 401 `AUTH_REQUIRED` (`10`) | 401 (`28`) |
+| Another customer reads the order | 403 `ORDER_FORBIDDEN` (`11`) | 403 (`29a`, `29b`) |
+| Automated checks | `npm run check`: lint clean, 18 frontend + 19 backend tests, build OK (`05`) | – |
+
+Evidence files are in `ShopSmart_Lab_Evidence/06_aws/`.
+
+## Working features (verified on the hosted site)
+
+- Browse products, search, category filter, sort, product details
+- Cart: add, change quantity, remove, kept after refresh
+- Sign in / create account / sign out, My orders
+- Simulated checkout for signed-in customers; invalid details refused (422); quantity above stock refused (409)
+- Product assistant: answers from current catalog records with links, clear no-match message, invalid input refused, safe fallback with a notice when Gemini fails or times out (10 s)
+- API recovers automatically after a crash and after a server reboot; data is kept
 
 ## Known limitations
 
-- **No authentication.** There are no user accounts or roles, so order history and admin actions are not protected. Only fictional data should be entered; the checkout page says so.
-- **Stock in the cart can be outdated (DEF-03).** The cart remembers the stock from when an item was added. The API still refuses orders above the real stock with a clear message.
-- **The cart is saved per browser.** The cart is kept in the browser's localStorage. It is not shared between devices or browsers.
-- **AI depends on a key and the internet.** Without `GEMINI_API_KEY` or without internet, the assistant uses rule-based answers. A live Gemini answer took about 6 seconds in testing.
-- **Hosting.** Not deployed for this release (local only).
-- **Dependencies.** `npm audit` reports 11 vulnerabilities in third-party packages (5 moderate, 5 high, 1 critical). They were not addressed in this lab.
+- **Single server.** One EC2 instance is a single point of failure, and the database has no automatic backups (fictional data only; accepted for a short demo).
+- **No real domain.** The site uses the free `sslip.io` hostname of the Elastic IP.
+- **Accounts are basic.** No password reset or email verification; sessions last 7 days. Use fictional details only.
+- **Stock in the cart can be outdated (DEF-03).** The API still refuses orders above the real stock.
+- **The cart is saved per browser** (localStorage).
+- **AI depends on a key and the internet.** Without them the assistant uses rule-based answers with a notice.
+- **Dependencies.** `npm audit` reports 13 vulnerabilities in third-party packages (5 moderate, 5 high, 3 critical). Not addressed in this activity.
 
 ## Local startup
 
-Follow the project `README.md`, section "Set up the ShopSmart project", steps 1 to 11:
+Follow the project `README.md`, section "Set up the ShopSmart project", steps 1 to 11. Notes for this version:
 
-1. Create `backend/.env` and `frontend/.env` from the `.env.example` files (README step 3).
-2. `npm install` (step 4), `npm run db:generate` (step 5), `npm run db:migrate` (step 6).
-3. `npm run db:seed` (step 7) – **only on a new, empty database**, because it deletes orders and products.
-4. `npm run check` (step 8), then `npm run dev` (step 9).
-5. Open `http://localhost:3000/api/health` and `http://localhost:5173` (steps 10–11).
-
-**Extra configuration added in this version:**
-
-- `GEMINI_API_KEY` in `backend/.env` – optional. Without it, the assistant uses rule-based answers. It is listed in `backend/.env.example` with an empty value.
+- Apply migrations with `npm exec --workspace backend -- prisma migrate deploy` (the new `customer_accounts` migration is already committed).
+- `npm run db:seed` only on a new, empty database – it deletes orders and products.
+- Use `http://localhost:5173` (not `127.0.0.1`) so the sign-in cookie matches the API at `http://localhost:3000`.
+- `GEMINI_API_KEY` in `backend/.env` is optional.
 
 ## Team record
 
@@ -53,7 +79,8 @@ This was a solo submission.
 
 | Member | Test I ran | Contribution | Issue I can explain |
 |---|---|---|---|
-| Jansdale S. Yusi | All 23 customer journey tests (TC-01 to TC-23), including the API-down test TC-23 | Ran and recorded the tests and evidence, verified the fixes, ran the release checks, and drew the deployment diagram | DEF-04: why "Failed to fetch" appeared when the API was down, and how `api.js` now shows a clear message and a timeout |
+| Jansdale S. Yusi | All local retests and all 8 hosted checks | Created and secured the AWS account, launched and configured the EC2 server, deployed the release, ran every test, captured the evidence | Why a guest gets 401 but another customer gets 403: the session cookie identifies the customer, and the API compares the order's `customerId` with the session's customer |
+
 ## Tools used
 
-Claude (an AI assistant) helped draft the code fixes and this documentation. I ran every test, captured all evidence, and checked the results myself.
+Claude (an AI assistant) helped write the sign-in code, the server commands and this documentation. I created the AWS resources, ran every command and test, captured all evidence, and checked the results myself.

@@ -1,0 +1,35 @@
+digraph ShopSmartAWS {
+  graph [rankdir=LR, fontname="Helvetica", fontsize=12, pad=0.4, nodesep=0.5, ranksep=0.7, bgcolor="white",
+         label="ShopSmart on AWS – single EC2 host (ap-southeast-1, Singapore)  •  live: https://13-250-195-24.sslip.io  •  code 47ba3cc", labelloc=t, fontsize=15];
+  node  [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=13, fillcolor="#ffffff", color="#334155", penwidth=1.3];
+  edge  [fontname="Helvetica", fontsize=12, color="#334155", penwidth=1.2];
+
+  user   [label="Customer's browser\n(React app downloaded from the site)\nfictional test customers only", fillcolor="#e0f2fe"];
+  admin  [label="Developer laptop\n(SSH key shopsmart-key.pem)", fillcolor="#f1f5f9"];
+  gemini [label="Google Gemini API\n(external AI provider)\nreceives only selected public\nproduct facts – no customer data", fillcolor="#fef3c7"];
+  le     [label="Let's Encrypt\n(free TLS certificate,\nauto-renewed by Caddy)", fillcolor="#f1f5f9"];
+
+  subgraph cluster_aws {
+    label="AWS account (Free plan, US$120 credits)  –  Region ap-southeast-1"; style="rounded,dashed"; color="#f59e0b"; fontsize=12;
+    eip [label="Elastic IP 13.250.195.24\nhostname 13-250-195-24.sslip.io", fillcolor="#fff7ed"];
+    subgraph cluster_sg {
+      label="Security group shopsmart-web-sg\ninbound: 443 + 80 from anywhere, 22 from my IP only\n(3000 and 5432 are NOT open)"; style="rounded"; color="#dc2626"; fontsize=11;
+      subgraph cluster_ec2 {
+        label="EC2 instance shopsmart-web  (t3.small, Ubuntu 24.04, 20 GiB gp3)"; style="rounded,filled"; fillcolor="#f8fafc"; color="#0f766e"; fontsize=11;
+        caddy [label="Caddy web server  :443 (:80 → 308 redirect)\n• HTTPS certificate\n• serves React build /var/www/shopsmart\n• SPA rewrite: unknown path → index.html\n• /api/* → reverse proxy", fillcolor="#ccfbf1"];
+        api   [label="Express API (Node 22)  port 3000 – internal, not opened in security group\nsystemd service shopsmart-api (Restart=always, enabled at boot)\n• sign-in sessions (HttpOnly, Secure, SameSite=Lax cookie)\n• order ownership check (401 / 200 / 403)\n• assistant: selects products, validates AI IDs, fallback\n• secrets in backend/.env (chmod 600)", fillcolor="#dcfce7"];
+        db    [label="PostgreSQL 16  127.0.0.1:5432 only\nProducts, Customers, Sessions, Orders\nschema via prisma migrate deploy (2 migrations)", fillcolor="#ede9fe"];
+        logs  [label="journalctl logs\n(method, URL, status – no secrets)", fillcolor="#f1f5f9", fontsize=10];
+      }
+    }
+  }
+
+  user  -> eip   [label="HTTPS 443"];
+  eip   -> caddy [label="443 / 80"];
+  caddy -> api   [label="/api/* → http://127.0.0.1:3000\n(internal only)"];
+  api   -> db    [label="DATABASE_URL\n(localhost only)"];
+  api   -> gemini[label="HTTPS, server-side key\n10 s timeout"];
+  api   -> logs  [style=dashed, arrowhead=none];
+  admin -> eip   [label="SSH 22\n(my IP only)", style=dashed];
+  caddy -> le    [label="ACME", style=dotted];
+}
